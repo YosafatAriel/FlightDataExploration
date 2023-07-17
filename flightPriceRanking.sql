@@ -1,0 +1,26 @@
+-- SUBQUERY UNTK MENCARI DATA TRANSAKSI PENERBANGAN USERS DARI TAHUN 2020-2023
+WITH users_transaction AS(
+SELECT 
+us.user_id, 
+us.name, 
+-- BUAT 4 KOLOM UNTUK MENDAPATKAN DATA PENJUALAN SESUAI TAHUN
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2020 THEN price ELSE 0 END ) AS penjualan_2020,
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2021 THEN price ELSE 0 END ) AS penjualan_2021,
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2022 THEN price ELSE 0 END ) AS penjualan_2022,
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2023 THEN price ELSE 0 END ) AS penjualan_2023
+FROM user_dataset AS us
+JOIN flight_dataset AS fl
+	ON us.user_id = fl.user_id
+GROUP BY 1,2
+)
+
+
+-- PARENT QUERY UNTUK MENCARI USER_ID YANG MENGALAMI PENURUNAN PENJUALAN TOTAL 
+-- LEBIH DARI 10.000 
+
+SELECT *
+FROM users_transaction
+WHERE 
+penjualan_2022-penjualan_2023>10000 AND
+penjualan_2021-penjualan_2022>10000 AND
+penjualan_2020-penjualan_2021>10000
