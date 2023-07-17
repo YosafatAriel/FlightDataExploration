@@ -1,35 +1,26 @@
-WITH destination AS (
-SELECT DISTINCT "from", "to",
-price
-FROM flight_dataset 
-),
-
-price_ranking AS (
-SELECT *,
-ROW_NUMBER() OVER (PARTITION BY "from", "to" ORDER BY price DESC) AS price_rank
-FROM destination),
-
-total_travel_id AS (
-SELECT user_id, 
-COUNT(DISTINCT travel_id) AS travel_frequency, 
-price_rank
-FROM flight_dataset AS fd
-JOIN price_ranking AS cte_dua
-	ON cte_dua."from" = fd."from"
-	AND cte_dua."to" = fd."to"
-	AND cte_dua.price = fd.price
-GROUP BY user_id, price_rank
-),
-
-max_travel AS (
-SELECT *,
-MAX(travel_frequency) OVER(PARTITION BY user_id) AS max_transaction
-FROM total_travel_id
+-- SUBQUERY UNTK MENCARI DATA TRANSAKSI PENERBANGAN USERS DARI TAHUN 2020-2023
+WITH users_transaction AS(
+SELECT 
+us.user_id, 
+us.name, 
+-- BUAT 4 KOLOM UNTUK MENDAPATKAN DATA PENJUALAN SESUAI TAHUN
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2020 THEN price ELSE 0 END ) AS penjualan_2020,
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2021 THEN price ELSE 0 END ) AS penjualan_2021,
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2022 THEN price ELSE 0 END ) AS penjualan_2022,
+SUM(CASE WHEN EXTRACT(YEAR from date) = 2023 THEN price ELSE 0 END ) AS penjualan_2023
+FROM user_dataset AS us
+JOIN flight_dataset AS fl
+	ON us.user_id = fl.user_id
+GROUP BY 1,2
 )
 
-SELECT u.user_id, u.company, u.name, 
-u.gender, u.age, price_rank
-FROM user_dataset AS u
-JOIN max_travel AS ma
-	ON u.user_id = ma.user_id
-WHERE max_transaction = travel_frequency
+
+-- PARENT QUERY UNTUK MENCARI USER_ID YANG MENGALAMI PENURUNAN PENJUALAN TOTAL 
+-- LEBIH DARI 10.000 
+
+SELECT *
+FROM users_transaction
+WHERE 
+penjualan_2022-penjualan_2023>10000 AND
+penjualan_2021-penjualan_2022>10000 AND
+penjualan_2020-penjualan_2021>10000
